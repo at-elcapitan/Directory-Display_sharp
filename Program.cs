@@ -1,61 +1,57 @@
 ﻿using System;
 using System.IO;
-using System.Collections;
+using System.Linq;
 
 namespace DirectoryDisplay_sharp
 {
     class MainClass
     {
-        private static string SetPath(string arg, bool absolute = false)
+        private static string relative_path = "";
+        private static string absolute_path = "";
+
+        private static void SetRelativePath(string arg, bool absolute = false)
         {
-            string path;
             string[] path_arr;
 
-            arg = arg.TrimEnd(S'/');
+            arg = arg.TrimEnd('/');
             path_arr = arg.Split('/');
 
             if (absolute & arg.Length > 1)
             {
-                path = "/" + path_arr[path_arr.Length - 1] + "/";
-                return path;
+                relative_path = "/" + path_arr[path_arr.Length - 1] + "/";
             }
 
-            path = path_arr[path_arr.Length - 1] + "/";
-            return path;
+            relative_path = path_arr[path_arr.Length - 1] + "/";
         }
 
         public static void Main(string[] args)
         {
-            //  0   0   0   0
-            // SIZ ACC NOC ALL 
+            //  0   0  0
+            // SIZ ACC ALL 
             int flags = 0;
-            string path = "";
 
             foreach (string arg in args)
             {
                 switch (arg)
                 {
                     case "--size":
-                        flags = flags | 0b1000;
+                        flags = flags | 0b100;
                         break;
 
                     case "--access":
-                        flags = flags | 0b0100;
-                        break;
-
-                    case "--no-color":
-                        flags = flags | 0b0010;
+                        flags = flags | 0b010;
                         break;
 
                     case "--all":
-                        flags = flags | 0b0001;
+                        flags = flags | 0b001;
                         break;
 
                     default:
                         if (!arg.StartsWith("-", StringComparison.Ordinal))
                         {
-                            path = SetPath(arg, arg.StartsWith("/", 
+                            SetRelativePath(arg, arg.StartsWith("/", 
                                             StringComparison.Ordinal));
+                            absolute_path = Path.GetFullPath(arg);
                             break;
                         }
 
@@ -64,19 +60,15 @@ namespace DirectoryDisplay_sharp
                            switch (arg[i])
                             {
                                 case 's':
-                                    flags = flags | 0b1000;
+                                    flags = flags | 0b100;
                                     break;
 
                                 case 'A':
-                                    flags = flags | 0b0100;
-                                    break;
-
-                                case 'n':
-                                    flags = flags | 0b0010;
+                                    flags = flags | 0b010;
                                     break;
 
                                 case 'a':
-                                    flags = flags | 0b0001;
+                                    flags = flags | 0b001;
                                     break;
                             }
                         }
@@ -84,17 +76,51 @@ namespace DirectoryDisplay_sharp
                 }
             }
 
-            if (path == "")
+            if (absolute_path == "")
             {
-                path = SetPath(Environment.CurrentDirectory);
+                SetRelativePath(Environment.CurrentDirectory);
+                absolute_path = Environment.CurrentDirectory;
             }
             else
             {
-                if (!Directory.Exists(path))
+                if (!Directory.Exists(absolute_path))
                 {
-                    Console.WriteLine("wds: {0} - no such directory", path);
+                    Console.WriteLine("wds: {0} - no such directory", 
+                                      relative_path);
                     return;
                 }
+            }
+
+            Console.WriteLine("{0}\n", relative_path);
+            var files = Directory.GetFiles(absolute_path)
+                        .Select(Path.GetFileName);
+            string[] dirs = Directory.GetDirectories(absolute_path);
+
+            foreach (string dir in dirs)
+            {
+                string fdir = dir.Replace(absolute_path, "");
+                if (!fdir.StartsWith("/", StringComparison.Ordinal))
+                {
+                    fdir = fdir.Insert(0, "/");
+                }
+
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write("DIR\t");
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.WriteLine(fdir);
+            }
+
+            foreach (string file in files)
+            {
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write("FILE\t");
+
+                if (file.Contains(".exe") || file.Contains(".com") || file.Contains(".bat"))
+                {
+                    Console.Write("*");
+                    Console.ForegroundColor = ConsoleColor.Green;
+                }
+                Console.WriteLine(file);
             }
         }
     }
